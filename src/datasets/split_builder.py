@@ -5,47 +5,29 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
-
-COLUMN_ALIASES = {
-    "reference": ["reference", "ref", "img_ref", "anchor", "image_ref"],
-    "candidate_a": ["candidate_a", "a", "img_a", "left", "image_a"],
-    "candidate_b": ["candidate_b", "b", "img_b", "right", "image_b"],
-    "choice": ["choice", "label", "target", "human_choice", "winner"],
-}
-
-
-def _resolve_columns(df: pd.DataFrame) -> Dict[str, str]:
-    df_cols = {c.lower(): c for c in df.columns}
-    out = {}
-    for canonical, aliases in COLUMN_ALIASES.items():
-        match = next((df_cols[a] for a in aliases if a in df_cols), None)
-        if match is None:
-            raise ValueError(
-                f"Missing required column for '{canonical}'. "
-                f"Expected one of: {aliases}. Found: {list(df.columns)}"
-            )
-        out[canonical] = match
-    return out
+REQUIRED_TRIPLET_COLUMNS = (
+    "reference",
+    "candidate_a",
+    "candidate_b",
+    "choice",
+)
 
 
-def _normalize_choice(value) -> int:
-    if isinstance(value, (int, np.integer)):
-        if value in (0, 1):
-            return int(value)
-    s = str(value).strip().lower()
-    mapping = {
-        "0": 0,
-        "1": 1,
-        "a": 0,
-        "b": 1,
-        "left": 0,
-        "right": 1,
-        "candidate_a": 0,
-        "candidate_b": 1,
-    }
-    if s not in mapping:
-        raise ValueError(f"Unsupported label value '{value}'.")
-    return mapping[s]
+def _validate_triplet_columns(df: pd.DataFrame) -> None:
+    missing = [c for c in REQUIRED_TRIPLET_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(
+            "Triplet CSV is missing required columns "
+            f"{missing}. Found: {list(df.columns)}"
+        )
+
+
+def _validate_binary_choice(series: pd.Series) -> pd.Series:
+    labels = pd.to_numeric(series, errors="raise").astype(int)
+    invalid = sorted(v for v in labels.unique().tolist() if v not in (0, 1))
+    if invalid:
+        raise ValueError(f"Choice labels must be binary 0/1. Found invalid values: {invalid}")
+    return labels
 
 
 def _stratified_indices(
@@ -132,14 +114,14 @@ def main() -> None:
         raise ValueError(f"Ratios must sum to 1.0, got {ratio_sum}.")
 
     df = pd.read_csv(args.triplets_csv)
-    col = _resolve_columns(df)
+    _validate_triplet_columns(df)
 
     clean = pd.DataFrame(
         {
-            "reference": df[col["reference"]].astype(str),
-            "candidate_a": df[col["candidate_a"]].astype(str),
-            "candidate_b": df[col["candidate_b"]].astype(str),
-            "choice": df[col["choice"]].apply(_normalize_choice).astype(int),
+            "reference": df["reference"].astype(str),
+            "candidate_a": df["candidate_a"].astype(str),
+            "candidate_b": df["candidate_b"].astype(str),
+            "choice": _validate_binary_choice(df["choice"]),
         }
     )
 

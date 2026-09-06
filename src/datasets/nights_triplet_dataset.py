@@ -6,12 +6,12 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 
-COLUMN_ALIASES = {
-    "reference": ["reference", "ref", "img_ref", "anchor", "image_ref"],
-    "candidate_a": ["candidate_a", "a", "img_a", "left", "image_a"],
-    "candidate_b": ["candidate_b", "b", "img_b", "right", "image_b"],
-    "choice": ["choice", "label", "target", "human_choice", "winner"],
-}
+REQUIRED_TRIPLET_COLUMNS = (
+    "reference",
+    "candidate_a",
+    "candidate_b",
+    "choice",
+)
 
 
 class NightsTripletDataset(Dataset):
@@ -28,7 +28,7 @@ class NightsTripletDataset(Dataset):
         self.transform = transform
 
         df = pd.read_csv(self.split_csv)
-        self.columns = self._resolve_columns(df)
+        self._validate_columns(df)
         self.df = df
 
     def __len__(self) -> int:
@@ -37,9 +37,9 @@ class NightsTripletDataset(Dataset):
     def __getitem__(self, idx: int) -> Dict:
         row = self.df.iloc[idx]
 
-        ref_path = self._resolve_path(row[self.columns["reference"]])
-        a_path = self._resolve_path(row[self.columns["candidate_a"]])
-        b_path = self._resolve_path(row[self.columns["candidate_b"]])
+        ref_path = self._resolve_path(row["reference"])
+        a_path = self._resolve_path(row["candidate_a"])
+        b_path = self._resolve_path(row["candidate_b"])
 
         ref_img = self._load_image(ref_path)
         a_img = self._load_image(a_path)
@@ -50,7 +50,7 @@ class NightsTripletDataset(Dataset):
             a_img = self.transform(a_img)
             b_img = self.transform(b_img)
 
-        label = int(row[self.columns["choice"]])
+        label = int(row["choice"])
 
         return {
             "reference": ref_img,
@@ -63,20 +63,13 @@ class NightsTripletDataset(Dataset):
         }
 
     @staticmethod
-    def _resolve_columns(df: pd.DataFrame) -> Dict[str, str]:
-        df_cols = {c.lower(): c for c in df.columns}
-        out = {}
-
-        for canonical, aliases in COLUMN_ALIASES.items():
-            match = next((df_cols[a] for a in aliases if a in df_cols), None)
-            if match is None:
-                raise ValueError(
-                    f"Missing required column for '{canonical}'. "
-                    f"Expected one of: {aliases}. Found: {list(df.columns)}"
-                )
-            out[canonical] = match
-
-        return out
+    def _validate_columns(df: pd.DataFrame) -> None:
+        missing = [c for c in REQUIRED_TRIPLET_COLUMNS if c not in df.columns]
+        if missing:
+            raise ValueError(
+                "Split CSV is missing required columns "
+                f"{missing}. Found: {list(df.columns)}"
+            )
 
     def _resolve_path(self, raw_path: str) -> Path:
         p = Path(str(raw_path))
@@ -95,9 +88,9 @@ class NightsTripletDataset(Dataset):
         """Return rows with at least one missing image path."""
         rows = []
         for i, row in self.df.iterrows():
-            ref_p = self._resolve_path(row[self.columns["reference"]])
-            a_p = self._resolve_path(row[self.columns["candidate_a"]])
-            b_p = self._resolve_path(row[self.columns["candidate_b"]])
+            ref_p = self._resolve_path(row["reference"])
+            a_p = self._resolve_path(row["candidate_a"])
+            b_p = self._resolve_path(row["candidate_b"])
             if not (ref_p.exists() and a_p.exists() and b_p.exists()):
                 rows.append(
                     {
