@@ -4,7 +4,7 @@ from typing import Dict, List, Optional
 
 from src.eval.evaluate_2afc import evaluate
 from src.models import BackboneConfig, VisionTransformerEncoder, replace_attention_modules
-from src.models.moh_attention import make_attention_factory, resolve_block_indices
+from src.models.variants import make_attention_factory, resolve_block_indices
 
 
 EXPERIMENTS: List[Dict] = [
@@ -66,6 +66,20 @@ EXPERIMENTS: List[Dict] = [
         "pretrained": False,
         "attention_type": "moh",
         "replace_layers": [0, 2, 4, 6, 8, 10],
+    },
+    {
+        "name": "pyra_all_deit_small",
+        "model_name": "deit_small_patch16_224",
+        "pretrained": False,
+        "attention_type": "pyra",
+        "replace_layers": "all",
+    },
+    {
+        "name": "meta_all_deit_small",
+        "model_name": "deit_small_patch16_224",
+        "pretrained": False,
+        "attention_type": "meta",
+        "replace_layers": "all",
     },
 ]
 
