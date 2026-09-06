@@ -1,0 +1,6 @@
+experiment,model_name,pretrained,attention_type,replace_layers,samples,batches,accuracy_2afc,ms_per_image,images_per_second,elapsed_seconds
+baseline_deit_small,deit_small_patch16_224,False,standard,none,805,51,0.6198757763975156,54.869884554866516,18.22493355166551,132.51077120000264
+moh_all_deit_small,deit_small_patch16_224,False,moh,all,805,51,0.6049689440993788,58.887265921324754,16.981600085424777,142.21274719999928
+moh_last6_deit_small,deit_small_patch16_224,False,moh,"6,7,8,9,10,11",805,51,0.6,58.27569275362081,17.159813169923538,140.73579799999425
+moh_first6_deit_small,deit_small_patch16_224,False,moh,"0,1,2,3,4,5",805,51,0.6161490683229813,56.15564231883964,17.80764957370117,135.61587619999773
+moh_every_other_deit_small,deit_small_patch16_224,False,moh,"0,2,4,6,8,10",805,51,0.6372670807453417,99.68931291926764,10.031165535365258,240.74969070003135
